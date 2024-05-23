@@ -125,7 +125,7 @@ class ChatTrainer:
         for item in to_delete_files:
             os.remove(item[0])
 
-    def train(self, is_keep_training: bool = True, is_finetune: bool=False) -> None:
+    def train(self, is_keep_training: bool = False, is_finetune: bool=False) -> None:
         '''
         is_keep_training: 是否从断点处加载状态继续训练
         is_finetune: 是否微调，微调的话可能需要冻结部分参数
