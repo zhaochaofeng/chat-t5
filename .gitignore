@@ -17,9 +17,9 @@
 logs/*
 
 data/*
-!/data/my_train_dataset_3k.parquet
-!/data/my_test_dataset_2k.parquet
-!/data/my_valid_dataset_1k.parquet
+!/data/my_train_dataset.parquet
+!/data/my_test_dataset.parquet
+!/data/my_valid_dataset.parquet
 
 model_save/*
 !model_save/put_model_files_here

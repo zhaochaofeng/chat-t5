@@ -34,11 +34,10 @@ def get_dataset(split: str, file: str, cache_dir: str = '.cache') -> Dataset:
             # add an eos token for signal that end of sentence, using in generate.
             "prompt": f"{sample['prompt']}[EOS]",
             "chosen": f"{sample['chosen']}[EOS]",
-            "rejected": f"{sample['rejected']}[EOS]",
+            "rejected": f"{sample['reject']}[EOS]",
         }
 
     return dataset.map(split_prompt_and_responses).shuffle(2333)
-
 
 def train_dpo(config: DpoConfig, peft_config: LoraConfig=None) -> None:
 
@@ -46,14 +45,16 @@ def train_dpo(config: DpoConfig, peft_config: LoraConfig=None) -> None:
     tokenizer = PreTrainedTokenizerFast.from_pretrained(config.tokenizer_dir)
     
     # step 2. 加载预训练模型
-    model_train, model_ref = None, None 
+    model_train, model_ref = None, None
     if os.path.isdir(config.sft_model_file):
         # 传入文件夹则 from_pretrained
         model_train = TextToTextModel.from_pretrained(config.sft_model_file)
         model_ref = TextToTextModel.from_pretrained(config.sft_model_file)
     else:
         # load_state_dict
-        t5_config = get_T5_config(T5ModelConfig(), vocab_size=len(tokenizer), decoder_start_token_id=tokenizer.pad_token_id, eos_token_id=tokenizer.eos_token_id)
+        t5_config = get_T5_config(T5ModelConfig(), vocab_size=len(tokenizer),
+                                  decoder_start_token_id=tokenizer.pad_token_id,
+                                  eos_token_id=tokenizer.eos_token_id)
 
         model_train = TextToTextModel(t5_config)
         model_train.load_state_dict(torch.load(config.sft_model_file, map_location='cpu')) # set cpu for no exception
@@ -177,7 +178,6 @@ def merge_lora_weight_into_model(config: DpoConfig, peft_config: LoraConfig) -> 
     sft_model.save_pretrained(save_merge_file)
     print('save merge model file to: {}'.format(save_merge_file))
 
-   
 if __name__ == "__main__":
 
     peft_config = LoraConfig(
@@ -197,7 +197,3 @@ if __name__ == "__main__":
     # 2. merge lora adapter into model
     # merge_lora_weight_into_model(dpo_config, peft_config)
 
-
-
-
-    

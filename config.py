@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from os.path import dirname, abspath
 
 # replace '\' on windows to '/'
+## /Users/chaofeng/code/ChatLM-mini-Chinese
 PROJECT_ROOT: str = '/'.join(abspath(dirname(__file__)).split('\\')) if '\\' in abspath(dirname(__file__)) else abspath(dirname(__file__))
 
 # ===================================================================================
@@ -50,7 +51,7 @@ class DpoConfig:
     save_steps: int = 2000
     output_dir: str = PROJECT_ROOT + '/model_save/dpo'
     warmup_steps: int = 1000
-    fp16: bool = True
+    fp16: bool = False  # 不使用混合精度
     seed: int = 23333
     beta: float = 0.1
 
@@ -83,7 +84,7 @@ class SFTconfig:
 # 以下为训练的配置
 @dataclass
 class TrainConfig:
-    epochs: int = 8
+    epochs: int = 1
     batch_size_per_gpu: int = 16
     
     learn_rate: float = 0.0001                      # 最大 div_factor * learn_rate
@@ -103,7 +104,7 @@ class TrainConfig:
     validation_file: str = PROJECT_ROOT + '/data/my_valid_dataset.parquet'
     test_file: str = PROJECT_ROOT + '/data/my_test_dataset.parquet'
 
-    # 从哪个模型开始微调，仅当traing 函数 is_finetune = True时生效
+    # 从哪个模型开始微调，仅当traning 函数 is_finetune = True时生效
     # 微调记得冻结某些层或者调低学习率
     finetune_from_ckp_file = PROJECT_ROOT + '/model_save/chat_small_t5.best.bin'
 
@@ -111,8 +112,8 @@ class TrainConfig:
     train_state_dir: str = PROJECT_ROOT + '/model_save/train_latest_state'
     output_dir: str = PROJECT_ROOT + '/model_save/pretrain'
 
-    logging_steps: int = 50
-    save_steps: int = 10000
+    logging_steps: int = 5
+    save_steps: int = 5
     
     # dataset_cache_dir: str = PROJECT_ROOT + '/data/.cache'
     # trainer_log_file: str = PROJECT_ROOT + '/logs/trainer.log'
@@ -123,12 +124,11 @@ class TrainConfig:
     dataloader_buffer_size: int = 50000
     max_seq_len: int = 256                      # 最大句子长度，默认：256
 
-
 #======================================================================================
 # 以下为模型的配置
 @dataclass
 class T5ModelConfig:
-
+    '''
     d_ff: int = 3072                        # 全连接层维度
 
     d_model: int = 768                      # 词向量维度
@@ -137,3 +137,11 @@ class T5ModelConfig:
 
     num_decoder_layers: int = 10            # Transformer decoder 隐藏层层数
     num_layers: int = 10                    # Transformer encoder 隐藏层层数
+    '''
+
+    d_ff: int = 128
+    d_model: int = 32
+    num_heads: int = 1
+    d_kv: int = 32
+    num_decoder_layers: int = 1
+    num_layers: int = 1

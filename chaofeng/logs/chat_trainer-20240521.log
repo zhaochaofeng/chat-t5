@@ -1,0 +1,26 @@
+[2024-05-21 20:37:04.650] [INFO]: memory available: 1.89 GM, dist available: 25.23 GM, keep_in_memory: False
+[2024-05-21 20:37:04.908] [INFO]: using device: cpu
+[2024-05-21 20:37:04.936] [INFO]: train dataset size: 188, steps_per_epoch: 12, valid dataset size: 63, eval_steps: 4, num_workers: 0
+[2024-05-21 20:37:27.979] [INFO]: training loss: epoch: 0, step: 0, loss: 10.578825950622559, device: cpu
+[2024-05-21 20:44:38.836] [INFO]: memory available: 2.59 GM, dist available: 25.23 GM, keep_in_memory: False
+[2024-05-21 20:44:39.078] [INFO]: using device: cpu
+[2024-05-21 20:44:39.106] [INFO]: train dataset size: 188, steps_per_epoch: 12, valid dataset size: 63, eval_steps: 4, num_workers: 0
+[2024-05-21 20:45:02.364] [INFO]: training loss: epoch: 0, step: 0, loss: 10.578825950622559, device: cpu
+[2024-05-21 20:46:35.690] [INFO]: memory available: 3.02 GM, dist available: 25.23 GM, keep_in_memory: False
+[2024-05-21 20:46:35.923] [INFO]: using device: cpu
+[2024-05-21 20:46:35.951] [INFO]: train dataset size: 188, steps_per_epoch: 12, valid dataset size: 63, eval_steps: 4, num_workers: 0
+[2024-05-21 20:49:59.985] [INFO]: memory available: 2.71 GM, dist available: 25.23 GM, keep_in_memory: False
+[2024-05-21 20:51:16.821] [INFO]: memory available: 2.81 GM, dist available: 25.23 GM, keep_in_memory: False
+[2024-05-21 20:52:20.986] [INFO]: memory available: 2.68 GM, dist available: 25.23 GM, keep_in_memory: False
+[2024-05-21 20:52:21.201] [INFO]: using device: cpu
+[2024-05-21 20:52:42.338] [INFO]: memory available: 2.88 GM, dist available: 25.23 GM, keep_in_memory: False
+[2024-05-21 20:52:42.539] [INFO]: using device: cpu
+[2024-05-21 20:52:42.548] [INFO]: train dataset size: 188, steps_per_epoch: 12, valid dataset size: 63, eval_steps: 4, num_workers: 0
+[2024-05-21 20:53:02.343] [INFO]: memory available: 2.88 GM, dist available: 25.23 GM, keep_in_memory: False
+[2024-05-21 20:53:02.545] [INFO]: using device: cpu
+[2024-05-21 20:53:02.553] [INFO]: train dataset size: 188, steps_per_epoch: 12, valid dataset size: 63, eval_steps: 4, num_workers: 0
+[2024-05-21 20:53:04.723] [INFO]: training loss: epoch: 0, step: 0, loss: 9.16792106628418, device: cpu
+[2024-05-21 21:00:57.238] [INFO]: memory available: 2.63 GM, dist available: 25.23 GM, keep_in_memory: False
+[2024-05-21 21:00:57.439] [INFO]: using device: cpu
+[2024-05-21 21:00:57.447] [INFO]: train dataset size: 188, steps_per_epoch: 12, valid dataset size: 63, eval_steps: 4, num_workers: 0
+[2024-05-21 21:01:37.676] [INFO]: training loss: epoch: 0, step: 0, loss: 9.146124839782715, device: cpu

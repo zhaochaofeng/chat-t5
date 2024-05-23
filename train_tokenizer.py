@@ -1,5 +1,4 @@
 import os
-import pandas as pd
 import sentencepiece as spm
 import tokenizers
 from tokenizers import Tokenizer, decoders
@@ -19,12 +18,12 @@ def check_dir_exits(dir: str) -> None:
         os.makedirs(dir)
     
 
-def train_my_huggingface_wiki_tokenizer(cropus_file: str, max_train_line: int=None, vocab_size: int=40960,token_type: str='char') -> None:
+def train_my_huggingface_wiki_tokenizer(corpus_file: str, max_train_line: int=None, vocab_size: int=40960, token_type: str='char') -> None:
     '''
     训练tokenizer with huggingface，至少需要32G内存，运行大概需要半个小时。
     '''
 
-    tokenizer_slow_save_path = PROJECT_ROOT + '/model_save/hf_tokenizer_slow/hf_bpe_tokenizer.josn'
+    tokenizer_slow_save_path = PROJECT_ROOT + '/model_save/hf_tokenizer_slow/hf_bpe_tokenizer.json'
     tokenizer_fast_save_path = PROJECT_ROOT + '/model_save/hf_tokenizer'
 
     check_dir_exits(PROJECT_ROOT + '/model_save/hf_tokenizer_slow')
@@ -36,10 +35,9 @@ def train_my_huggingface_wiki_tokenizer(cropus_file: str, max_train_line: int=No
         '''
         line_cnt = 0
         buffer = []
-        with open(cropus_file, 'r', encoding='utf-8') as f_read:
+        with open(corpus_file, 'r', encoding='utf-8') as f_read:
             cur_chunk_txt, txt_len = [], 0
             for line in f_read:
-
                 cur_chunk_txt.append(line)
                 txt_len += len(line)
                 line_cnt += 1
@@ -57,9 +55,10 @@ def train_my_huggingface_wiki_tokenizer(cropus_file: str, max_train_line: int=No
                 if isinstance(max_train_line, int) and line_cnt > max_train_line: break
                 
             # yield last
-            if len(buffer) > 0: yield buffer        
+            if len(buffer) > 0: yield buffer
+            print(line_cnt)
 
-    special_tokens = ["[PAD]","[EOS]","[SEP]","[BOS]", "[CLS]", "[MASK]", "[UNK]"]
+    special_tokens = ["[PAD]", "[EOS]", "[SEP]", "[BOS]", "[CLS]", "[MASK]", "[UNK]"]
     
     if token_type =='char':
 
@@ -148,8 +147,8 @@ def train_my_BPE_tokenizer() -> None:
 
 if __name__ == '__main__':
 
-    cropus_file = PROJECT_ROOT + '/data/wiki.simple.txt'
+    corpus_file = PROJECT_ROOT + '/data/wiki.simple.txt'
 
-    train_my_huggingface_wiki_tokenizer(cropus_file=cropus_file, token_type='char') # token_type must be 'char' or 'byte'
+    train_my_huggingface_wiki_tokenizer(corpus_file=corpus_file, token_type='char')  # token_type must be 'char' or 'byte'
 
 

@@ -13,4 +13,3 @@ if __name__ == '__main__':
     # 解析命令行参数，执行指定函数
     # e.g: python train.py train
     fire.Fire(component=chat_trainer)
-

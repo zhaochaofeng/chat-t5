@@ -206,7 +206,7 @@ cd ChatLM-mini-Chinese
 
 pip安装：
 ```bash
-pip install -r ./requirements.txt
+pip install -r ./requirements.txt -i https://pypi.mirrors.ustc.edu.cn/simple/
 ``` 
 
 如果pip安装了CPU版本的pytorch，可以通过下面的命令安装CUDA版本的pytorch：

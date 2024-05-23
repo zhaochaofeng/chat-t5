@@ -40,7 +40,7 @@ def circle_print(total_time: int=60) -> None:
 
 
 def chat(stream: bool=True) -> None:
-    global  STOP_CIRCLE
+    global STOP_CIRCLE
     history = []
     turn_count = 0
 

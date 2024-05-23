@@ -92,8 +92,12 @@ def generate_alpaca_gpt4_reject_response(groups_cnt: int=50000, max_len: int=320
         batch_prompt.append(f"{item['prompt']}[EOS]")
         process_item.append(item)
         
-        if i % 500 == 0: 
+        if i % 5 == 0:
             print('process {} items.'.format(i))
+
+        # 限制处理数量
+        if i >= 100:
+            break
 
         if len(batch_prompt) >= batch_size or i == len(data) - 1:
             
@@ -220,7 +224,7 @@ def split_train_eval_dataset() -> None:
         data = ujson.load(f)
     
     np.random.shuffle(data)
-    split_idx = int(len(data) * 0.99)
+    split_idx = int(len(data) * 0.7)
 
     train_data = data[0: split_idx]
     eval_data = data[split_idx: ]
@@ -242,8 +246,8 @@ if __name__ == '__main__':
     # 2. 生成rejected文本
     # generate_alpaca_gpt4_reject_response()
 
-    # 合并数据集
-    merge_rlhf_data()
+    # 合并数据集。报错 ？？？
+    # merge_rlhf_data()
 
     # 3. split train and eval dataset
-    # split_train_eval_dataset()
+    split_train_eval_dataset()

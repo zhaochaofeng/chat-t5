@@ -31,9 +31,13 @@ from utils.functions import (
     get_T5_config,
 )
 
+# 防止出现并行tokenizer警告日志
+import os
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+
 class ChatTrainer:
     def __init__(self, train_config: TrainConfig, model_config: T5ModelConfig, ) -> None:
-        
+
         self.train_config = train_config
         self.model_config = model_config
 
@@ -47,6 +51,7 @@ class ChatTrainer:
 
         self.is_win_platform = True if platform.system().lower() == 'windows' else False
 
+        ## 设置随机种子
         torch.manual_seed(train_config.seed)
         torch.cuda.manual_seed_all(train_config.seed)
     
@@ -61,25 +66,24 @@ class ChatTrainer:
             
             if ins.lower() in ('yes', 'y'):
 
-                suffix =  'exit_save_{}'.format(str(time.strftime('%Y%m%d%H%M%S', time.localtime())))
+                suffix = 'exit_save_{}'.format(str(time.strftime('%Y%m%d%H%M%S', time.localtime())))
 
                 self.accelerator.wait_for_everyone()
                 self.accelerator.save_state(output_dir=self.train_config.train_state_dir)
-
                 self.accelerator.print('model ckeck point has been saved in {}'.format(self.train_config.train_state_dir))
         
             sys.exit(0)
         else:
-            print('process not in trainingg, exit.')
+            print('process not in training, exit.')
             sys.exit(0)
 
     def save_model(self, suffix: Union[str, int]) -> None:
         '''保存模型到文件
         注意：save_model不能放到is_main_process里面
         e.g:
-        >>> self.save_model(epoch) # 在这里使用
-        >>> if accelerator.is_main_process:
-        >>>     do_somthing()
+        # >>> self.save_model(epoch) # 在这里使用
+        # >>> if accelerator.is_main_process:
+        # >>>     do_somthing()
         '''
         if self.model and self.accelerator:
 
@@ -88,10 +92,9 @@ class ChatTrainer:
 
             if self.accelerator.is_main_process:
                 unwrap_model = self.accelerator.unwrap_model(self.model)
-                model_dict =  self.accelerator.get_state_dict(unwrap_model)
+                model_dict = self.accelerator.get_state_dict(unwrap_model)
                 torch.save(model_dict, self.train_config.model_file.format(suffix))
 
-    
     def delete_early_checkpoint(self, epoch: int, keep_latest_n: int=3,) -> None:
         '''
         删除最早的模型，最保留最近keep_latest_n个模型文件
@@ -122,8 +125,7 @@ class ChatTrainer:
         for item in to_delete_files:
             os.remove(item[0])
 
-    
-    def train(self, is_keep_training: bool=False, is_finetune: bool=False) -> None:
+    def train(self, is_keep_training: bool = True, is_finetune: bool=False) -> None:
         '''
         is_keep_training: 是否从断点处加载状态继续训练
         is_finetune: 是否微调，微调的话可能需要冻结部分参数
@@ -142,13 +144,14 @@ class ChatTrainer:
             mixed_precision=train_config.mixed_precision,       # 混合精度
             gradient_accumulation_steps=accumulation_steps,     # 梯度累积
             project_dir=train_config.train_state_dir,
+            cpu=True,  ## 使用cpu训练
         )
 
         # 根据剩余内存大小决定是否完全加载数据集到内存中
         unuse_mem = virtual_memory().available / (1024 ** 3)  # 单位：GB
         unuse_disk = get_free_space_of_disk('./')
 
-        # 剩余内存≥48GB将把数据集留在内存中,因为2个显卡+全全部装载900多万的训练数据到内存需要大概43GB的CPU内存
+        # 剩余内存≥48GB将把数据集留在内存中,因为2个显卡+全部装载900多万的训练数据到内存需要大概43GB的CPU内存
         # 如果不放在内存中，将会使用迭代器生成数据，CPU 内存小于16GB也可以运行，但是不支持顺序打乱。
         # 多GPU keep_in_memory必须=True，否则无法进行分布式训练
         keep_in_memory = True if unuse_mem >= 48.0 or torch.cuda.device_count() >= 2 else False
@@ -203,19 +206,22 @@ class ChatTrainer:
 
         device = accelerator.device
         log.info('using device: {} '.format(str(device)), save_to_file=True)
-        
 
         # T5: All labels set to `-100` are ignored (masked), the loss is only computed for labels in `[0, ..., config.vocab_size]`
         tokenizer = train_dataset.tokenizer
         decoder_start_token_id = tokenizer.pad_token_id
 
         # for t5, set decoder_start_token_id = pad_token_id
-        t5_config = get_T5_config(T5ModelConfig(), vocab_size=len(tokenizer), decoder_start_token_id=decoder_start_token_id, eos_token_id=tokenizer.eos_token_id)
+        t5_config = get_T5_config(T5ModelConfig(),
+                                  vocab_size=len(tokenizer),
+                                  decoder_start_token_id=decoder_start_token_id,
+                                  eos_token_id=tokenizer.eos_token_id)
 
         model = TextToTextModel(t5_config)
 
         # 微调加载的模型并冻结embedding和encoder
         if is_finetune:
+            print('finetuning ...')
             model.load_state_dict(torch.load(train_config.finetune_from_ckp_file))
             # print(model)
             
@@ -231,12 +237,11 @@ class ChatTrainer:
         # T5训练，论文推荐使用Adafactor
         optimizer = Adafactor(params=model.parameters(), lr=train_config.learn_rate)
 
-        
         # 获取当前机器有多少个GPU，默认全部使用
         num_gpus_used = accelerator.state.num_processes
 
         # 单机多卡，每个step总共的batch_size = batch_size_per_gpu * num_gpus_used
-        # total_batch_size 初始化为batch_size_per_gpu真的只有CPU的情况
+        # total_batch_size 初始化为batch_size_per_gpu 在只有CPU的情况
         total_batch_size = train_config.batch_size_per_gpu
         if num_gpus_used >= 1:
             total_batch_size = num_gpus_used * train_config.batch_size_per_gpu
@@ -248,16 +253,24 @@ class ChatTrainer:
             log.info('train dataset size: {}, steps per epoch:{}; validation dataset size: {}, steps per validation: {}; datalodater num_workers: {}.'\
                     .format(len(train_dataset), steps_per_epoch, len(valid_dataset), eval_steps, num_workers), save_to_file=True)
 
-        
+        ## 学习率调节器
         lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(
                 optimizer=optimizer, 
                 max_lr=train_config.div_factor * train_config.learn_rate, 
                 epochs=train_config.epochs, 
-                steps_per_epoch=int(np.ceil( len(train_dataset) / (batch_size * accumulation_steps) )),  # 梯度累积相当于增大了batch_size
+                steps_per_epoch=int(np.ceil(len(train_dataset) / (batch_size * accumulation_steps))),  # 梯度累积相当于增大了batch_size
                 div_factor=train_config.div_factor,
                 cycle_momentum=False,
             )
-        
+
+        if is_keep_training:
+            print('keep training ...')
+            # accelerator.register_for_checkpointing(model)
+            # accelerator.register_for_checkpointing(optimizer)
+            # accelerator.register_for_checkpointing(lr_scheduler)
+            
+            accelerator.load_state(input_dir=train_config.train_state_dir)
+
         model, optimizer, lr_scheduler, train_dataloader, valid_dataloader = accelerator.prepare(
                 model, 
                 optimizer,
@@ -265,11 +278,11 @@ class ChatTrainer:
                 train_dataloader, 
                 valid_dataloader,
             )
-        
-        if is_keep_training:
-            accelerator.load_state(input_dir=train_config.train_state_dir)
-            accelerator.register_for_checkpointing(lr_scheduler)
-        
+
+        # accelerator.register_for_checkpointing(model)
+        # accelerator.register_for_checkpointing(optimizer)
+        # accelerator.register_for_checkpointing(lr_scheduler)
+
         self.model = model
         self.accelerator = accelerator
         
@@ -279,7 +292,8 @@ class ChatTrainer:
 
         # 添加进度条，只在主进程更新
         if accelerator.is_main_process:
-            progress = Progress(TextColumn("[progress.description]{task.description}"),
+            progress = Progress(
+                TextColumn("[progress.description]{task.description}"),
                 BarColumn(),
                 TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
                 TimeRemainingColumn(),
@@ -357,7 +371,7 @@ class ChatTrainer:
                     info_txt = 'training loss: epoch:{}, step:{}, loss:{}, device:{}'.\
                         format(epoch, step, loss_cpu, str(accelerator.device))
                     
-                    log.info(info_txt, std_out=False, save_to_file=True) # 保存 loss 到文件
+                    log.info(info_txt, std_out=False, save_to_file=True)  # 保存 loss 到文件
 
                     # 更新进度条
                     if accelerator.is_main_process:
@@ -382,7 +396,7 @@ class ChatTrainer:
                 valid_dataloader=valid_dataloader,
                 accelerator=accelerator,
                 eval_steps=eval_steps,
-                )
+            )
 
             # save model
             if cur_bleu4_score >= best_bleu4:
@@ -402,7 +416,6 @@ class ChatTrainer:
                             format(epoch, my_average(epoch_loss_list), cur_bleu4_score, best_bleu4, best_epoch)
                 # log.info(info_txt, std_out=True, save_to_file=True)
                 self.print_and_log(info_txt, accelerator)
-
 
     def evaluate(self, 
                 model: TextToTextModel, 
@@ -586,7 +599,6 @@ class ChatTrainer:
 
         return avg_bleu4_score
 
-    
     def print_and_log(self, info: str, accelerator: Accelerator=None) -> None:
         '''
         使用accelerator.print, 否则多进程打印会异常
@@ -605,5 +617,5 @@ if __name__ == '__main__':
 
     chat_trainer = ChatTrainer(train_config=train_config, model_config=model_config)
 
-    chat_trainer.train()
+    chat_trainer.train(is_finetune=False)
     # chat_trainer.test(best_epoch=0)

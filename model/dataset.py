@@ -68,19 +68,18 @@ class MyDataset(Dataset):
         # 生成器是死循环，不用退出，训练结束（epoch结束）会停止调用next()
         buffer_list = []
         while True:
-
             for prompt, response in zip(parquet_table['prompt'], parquet_table['response']):
-                
                 # 缓存数据不够，添加数据
                 if len(buffer_list) < self.buffer_size:
-                    buffer_list.append( (prompt.as_py(), response.as_py()) )
+                    ## 使用迭代器说明没有使用as_pandas()函数。as_py()将数据转化为ndarray
+                    buffer_list.append((prompt.as_py(), response.as_py()))
                     continue
                 
                 # 执行到这里，缓存区够了，打乱数据
                 shuffle(buffer_list)
                 for p, r in buffer_list:
                     # 在这里迭代
-                    yield  p, r
+                    yield p, r
 
                 # 迭代完成，清空缓存区
                 buffer_list = []
@@ -95,7 +94,7 @@ class MyDataset(Dataset):
         else:
             prompt, response = next(self.sample_generator)
 
-        max_seq_len = self.max_seq_len - 5 # len('[EOS]') = 5
+        max_seq_len = self.max_seq_len - 5  # len('[EOS]') = 5
         # add an eos token note that end of resopnse, using in generate.
         return f"{prompt[0: max_seq_len]}[EOS]", f"{response[0: max_seq_len]}[EOS]"
 
@@ -104,7 +103,7 @@ class MyDataset(Dataset):
         合并一个批次数据返回
         '''
         tokenizer = self.tokenizer
-
+        ## item[0]: prompt; item[1]: response
         prompt = tokenizer([item[0] for item in data], padding=True, return_token_type_ids=False)
         response = tokenizer([item[1] for item in data], padding=True, return_token_type_ids=False)
 
@@ -254,25 +253,26 @@ class ParquetDataset:
         return self.tokenizer
 
 
-
 if __name__ == '__main__':
     parquet_file = PROJECT_ROOT + '/data/my_valid_dataset.parquet'
-    tokenizer_dir = PROJECT_ROOT + '/model_save/tokenizer'
+    tokenizer_dir = PROJECT_ROOT + '/model_save'
 
     # example 1：
     dataset = MyDataset(parquet_file, tokenizer_dir, keep_in_memory=False, max_seq_len=128)
     print('\nexample 1, dataset size: ', len(dataset))
-    dataloader = DataLoader(dataset, batch_size=32, collate_fn=dataset.collate_fn)
+    dataloader = DataLoader(dataset, batch_size=5, collate_fn=dataset.collate_fn)
 
-    for epoch in range(2):
+    for epoch in range(1):
         print('epoch: {}'.format(epoch))
         for step, batch in enumerate(dataloader):
+            print(batch)
             x, x_mask, y = batch['input_ids'], batch['input_mask'], batch['target_ids']
-            print('step:{}'.format(step), x.shape, x_mask.shape, y.shape)
-            if step == 5:
+            # print('step:{}'.format(step), x.shape, x_mask.shape, y.shape)
+            # print('step: {}, x: {}\n x_mask: {}\n y: {}'.format(step, x, x_mask, y))
+            if step == 2:
                 break
 
-    
+    '''
     # exit(0)
     # example 2:
     dataset = ParquetDataset(parquet_file, tokenizer_dir, keep_in_memory=True, max_len=32)
@@ -287,4 +287,5 @@ if __name__ == '__main__':
             if step == 5:
                 break
         
-    
+    '''
+

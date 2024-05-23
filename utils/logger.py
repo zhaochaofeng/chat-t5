@@ -8,7 +8,11 @@ from config import PROJECT_ROOT
 
 # 自定义日志格式
 class Logger(object):
-    def __init__(self, logger_name: str, level=logging.DEBUG, std_out: bool=True, save2file: bool=False, file_name: str=None) ->None:
+    def __init__(self, logger_name: str,
+                 level=logging.DEBUG,
+                 std_out: bool=True,
+                 save2file: bool=False,
+                 file_name: str=None) ->None:
         super().__init__()
 
         if std_out == False and save2file == False:
@@ -40,21 +44,19 @@ class Logger(object):
                         )
             
             sh = logging.StreamHandler()
-            sh.setLevel(level)        
-            sh.setFormatter(formatter)
-            
+            sh.setLevel(level)           ## 设置日志级别
+            sh.setFormatter(formatter)   ## 设置格式
+            ## 添加StreamHandler对象
             self.stdout_logger.addHandler(sh)
-       
-                    
+
          # 输出到文件
         if save2file:
-
             file_logfmt = "[%(asctime)s.%(msecs)03d] [%(levelname)s]: %(message)s"
 
             self.file_logger = logging.getLogger('{}_file'.format(logger_name))
             self.file_logger.setLevel(level)
 
-            base_dir = PROJECT_ROOT + '/logs' # 获取上级目录的绝对路径
+            base_dir = PROJECT_ROOT + '/logs'  # 获取上级目录的绝对路径
             if not os.path.exists(base_dir):
                 os.mkdir(base_dir)
             
@@ -62,11 +64,11 @@ class Logger(object):
             if file_name is not None:
                 log_file = file_name
             else:
-                log_file = base_dir + '/' + logger_name  + '-' + str(time.strftime('%Y%m%d', time.localtime())) +'.log'
+                log_file = base_dir + '/' + logger_name + '-' + str(time.strftime('%Y%m%d', time.localtime())) +'.log'
 
             fh = logging.FileHandler(filename=log_file, mode='a', encoding='utf-8')
             fh.setLevel(level)
-            save_formatter =  logging.Formatter(
+            save_formatter = logging.Formatter(
                 fmt=file_logfmt,
                 datefmt=datefmt,
                 )
