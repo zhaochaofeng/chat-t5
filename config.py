@@ -90,7 +90,8 @@ class TrainConfig:
     learn_rate: float = 0.0001                      # 最大 div_factor * learn_rate
     div_factor: int = 50
 
-    mixed_precision: str = "bf16"                   # 混合精度 ''no','fp16','bf16' or 'fp8'
+    # mixed_precision: str = "bf16"                   # 混合精度 ''no','fp16','bf16' or 'fp8'
+    mixed_precision: str = 'no'
 
     # 注意：计算梯度时相当于batch_size * gradient_accumulation_steps，说人话就是梯度累积步数>1时，等于增大n倍的batch_size
     gradient_accumulation_steps: int = 8           # 累积梯度更新步数
@@ -113,7 +114,7 @@ class TrainConfig:
     output_dir: str = PROJECT_ROOT + '/model_save/pretrain'
 
     logging_steps: int = 5
-    save_steps: int = 5
+    save_steps: int = 10
     
     # dataset_cache_dir: str = PROJECT_ROOT + '/data/.cache'
     # trainer_log_file: str = PROJECT_ROOT + '/logs/trainer.log'

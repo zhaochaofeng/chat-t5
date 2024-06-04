@@ -30,8 +30,10 @@ class ChatBot:
         t5_config = get_T5_config(T5ModelConfig(), vocab_size=len(tokenizer), decoder_start_token_id=tokenizer.pad_token_id, eos_token_id=tokenizer.eos_token_id)
 
         try:
+            # 导入模型结构
             model = TextToTextModel(t5_config)
 
+            # 加载模型参数
             if os.path.isdir(infer_config.model_dir):
 
                 # from_pretrained
@@ -39,7 +41,7 @@ class ChatBot:
 
             elif infer_config.model_dir.endswith('.safetensors'):
 
-                # load safetensors
+                # load safetensors。这里有问题。不能值加载model.safetensors
                 load_model(model, infer_config.model_dir) 
 
             else:
@@ -62,7 +64,6 @@ class ChatBot:
                     device_map='auto',
                     dtype=torch.float16,
                 )
-       
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.model.to(self.device)

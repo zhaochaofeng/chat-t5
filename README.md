@@ -211,8 +211,8 @@ pip install -r ./requirements.txt -i https://pypi.mirrors.ustc.edu.cn/simple/
 
 如果pip安装了CPU版本的pytorch，可以通过下面的命令安装CUDA版本的pytorch：
 ```bash
-# pip 安装torch + cu118
-pip3 install torch --index-url https://download.pytorch.org/whl/cu118
+# pip 安装torch + cu12.1
+pip3 install torch torchvision torchaudio
 ```
 
 conda安装：

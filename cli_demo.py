@@ -82,7 +82,6 @@ def chat(stream: bool=True) -> None:
         stream_txt = []
         streamer = chat_bot.stream_chat(input_txt)
         rich_text = Text()
-
         print("\r\033[0;32;40mChatBot：\033[0m\n", end='')
 
         with Live(rich_text, refresh_per_second=15) as live: 
@@ -96,7 +95,7 @@ def chat(stream: bool=True) -> None:
             stream_txt = "我是一个参数很少的AI模型🥺，知识库较少，无法直接回答您的问题，换个问题试试吧👋"
 
         history[turn_count][1] = stream_txt
-        
+
         os.system(clear_cmd)
         print(build_prompt(history), flush=True)
         turn_count += 1

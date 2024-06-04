@@ -1,25 +1,17 @@
-# coding=utf-8
 import time
 import os 
-import pandas as pd 
-from dataclasses import dataclass
-import torch
+import pandas as pd
 from typing import Dict
-
 from tqdm import tqdm
 import numpy as np
 from transformers import PreTrainedTokenizerFast, Seq2SeqTrainer, DataCollatorForSeq2Seq, Seq2SeqTrainingArguments
-
 from transformers.generation.configuration_utils import GenerationConfig
 from datasets import Dataset, load_dataset
-
 from model.chat_model import TextToTextModel
-from model.dataset import MyDataset
 from config import TrainConfig, T5ModelConfig
+from utils.functions import get_T5_config, MyTrainerCallback
 
-from utils.functions import json_to_dataclass, get_T5_config, MyTrainerCallback
-
-tqdm.pandas()
+# tqdm.pandas()
 
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
@@ -27,7 +19,12 @@ def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast,  cach
     """
     加载数据集
     """
-    dataset = load_dataset('parquet', data_files=file,  split=split, cache_dir=cache_dir)
+    # Dataset对象。dict形式
+    '''
+    {'prompt': ['哪种牌子的鱼油纯度高？', '为何会肌肉痉...'],
+    'response': ['澳洲留学党。鱼油是浓...炎都可以吃这个。','您好，您所述的情...颅磁共振检查.']}
+    '''
+    dataset = load_dataset(path='parquet', data_files=file,  split=split, cache_dir=cache_dir)
 
     def tokens_to_ids(samples: dict) -> Dict[str, str]:
 
@@ -52,13 +49,18 @@ def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast,  cach
 
     return dataset
 
+
+
 def pre_train(config: TrainConfig) -> None:
 
     # step 1. 加载tokenizer
     tokenizer = PreTrainedTokenizerFast.from_pretrained(config.tokenizer_dir)
     
     # step 2. 加载模型配置文件
-    t5_config = get_T5_config(T5ModelConfig(), vocab_size=len(tokenizer), decoder_start_token_id=tokenizer.pad_token_id, eos_token_id=tokenizer.eos_token_id)
+    t5_config = get_T5_config(T5ModelConfig(),
+                              vocab_size=len(tokenizer),
+                              decoder_start_token_id=tokenizer.pad_token_id,
+                              eos_token_id=tokenizer.eos_token_id)
     
     # step 3. 初始化模型
     model = TextToTextModel(t5_config)
@@ -67,7 +69,6 @@ def pre_train(config: TrainConfig) -> None:
     dataset = get_dataset(file=config.train_file, split='train', tokenizer=tokenizer)
 
     # Step 5: Define the training arguments
-
     # T5属于sequence to sequence模型，故要使用Seq2SeqTrainingArguments、DataCollatorForSeq2Seq、Seq2SeqTrainer
     # huggingface官网的sft工具适用于language model/LM模型
 
@@ -89,7 +90,7 @@ def pre_train(config: TrainConfig) -> None:
         logging_steps=config.logging_steps,
         num_train_epochs=config.epochs,
         optim="adafactor",
-        report_to='tensorboard',
+        report_to=['tensorboard'],
         log_level='info',
         save_steps=config.save_steps,
         save_total_limit=3,
@@ -128,9 +129,12 @@ def pre_train(config: TrainConfig) -> None:
     loss_log.to_csv(f"{log_dir}/pre_train_log_{time.strftime('%Y%m%d-%H%M')}.csv")
 
     # Step 10: Save the model
-    trainer.save_model(config.output_dir)
-
+    trainer.save_model(config.output_dir+"_save")
 
 if __name__ == '__main__':
     config = TrainConfig()
     pre_train(config)
+
+
+
+
