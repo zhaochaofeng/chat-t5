@@ -1,3 +1,7 @@
+import os
+import time
+import numpy as np
+import pandas as pd
 from typing import Dict
 from config import TrainConfig, T5ModelConfig
 from transformers import PreTrainedTokenizerFast
@@ -5,17 +9,10 @@ from transformers import DataCollatorForSeq2Seq
 from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer
 from transformers import GenerationConfig
 from transformers import EarlyStoppingCallback
-from accelerate import Accelerator
 from model.chat_model import TextToTextModel
 from utils.functions import get_T5_config, MyTrainerCallback
 from datasets import Dataset
 from datasets import load_dataset, load_metric
-import numpy as np
-import pandas as pd
-import time
-import os
-
-
 
 def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast, cache_dir: str='.cache') -> Dataset:
     dataset = load_dataset(path='parquet', data_files=file, split=split, cache_dir=cache_dir)
@@ -66,9 +63,6 @@ def pre_train(config: TrainConfig) -> None:
     dataset_eval = get_dataset(file=config.validation_file, split='train', tokenizer=tokenizer)
     data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, max_length=config.max_seq_len)
 
-    # accelerator = Accelerator(cpu=True)
-    # model, tokenizer, data_collator, dataset = accelerator.prepare(model, tokenizer, data_collator, dataset)
-
     generation_config = GenerationConfig()
     generation_config.remove_invalid_values = True
     generation_config.eos_token_id = tokenizer.eos_token_id
@@ -81,14 +75,12 @@ def pre_train(config: TrainConfig) -> None:
     args = Seq2SeqTrainingArguments(
         output_dir=config.output_dir,
         evaluation_strategy='steps',
-        eval_steps=5,
         learning_rate=config.learn_rate,
         per_device_train_batch_size=config.batch_size_per_gpu,
         per_gpu_eval_batch_size=config.batch_size_per_gpu,
-        weight_decay=0.1,
         save_total_limit=5,
         save_steps=config.save_steps,
-        num_train_epochs=1,
+        num_train_epochs=config.epochs,
         max_steps=100,
         bf16=True if config.mixed_precision == 'bf16' else False,
         fp16=True if config.mixed_precision == 'fp16' else False,
@@ -108,7 +100,6 @@ def pre_train(config: TrainConfig) -> None:
         metric_for_best_model='bleu',
         greater_is_better=True,
         predict_with_generate=True,
-
     )
 
     empty_cuda_cahce = MyTrainerCallback()
@@ -123,12 +114,17 @@ def pre_train(config: TrainConfig) -> None:
         train_dataset=dataset,
         eval_dataset=dataset_eval,
         tokenizer=tokenizer,
-        # compute_metrics=compute_bleu_metrics,
-        callbacks=[empty_cuda_cahce],
+        compute_metrics=compute_bleu_metrics,
+        callbacks=[empty_cuda_cahce, early_stopping_callback],
     )
 
+    # 如果包含checkpoint则从断点处继续训练
+    has_checkpoint_file = 'checkpoint' in ''.join(os.listdir(config.output_dir))
+    if has_checkpoint_file:
+        print('-' * 100)
+        print('keep training')
     trainer.train(
-        # resume_from_checkpoint=True
+        resume_from_checkpoint=has_checkpoint_file
     )
 
     loss_log = pd.DataFrame(trainer.state.log_history)
@@ -136,11 +132,8 @@ def pre_train(config: TrainConfig) -> None:
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     loss_log.to_csv(path_or_buf=f"{log_dir}/pre_train_log_{time.strftime('%Y%m%d-%H%M%S')}.csv", index_label='index')
-    trainer.save_model(output_dir=config.output_dir+'_save')
-    # accelerator.save_state(output_dir=config.output_dir+'_save')
+    trainer.save_model(output_dir=config.output_dir)
 
 if __name__ == '__main__':
     config = TrainConfig()
     pre_train(config)
-
-

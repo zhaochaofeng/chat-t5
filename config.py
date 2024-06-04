@@ -56,7 +56,6 @@ class DpoConfig:
     beta: float = 0.1
 
 
-
 # 以下为sft配置
 @dataclass
 class SFTconfig:
@@ -113,7 +112,7 @@ class TrainConfig:
     train_state_dir: str = PROJECT_ROOT + '/model_save/train_latest_state'
     output_dir: str = PROJECT_ROOT + '/model_save/pretrain'
 
-    logging_steps: int = 5
+    logging_steps: int = 10
     save_steps: int = 10
     
     # dataset_cache_dir: str = PROJECT_ROOT + '/data/.cache'

@@ -50,7 +50,6 @@ def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast,  cach
     return dataset
 
 
-
 def pre_train(config: TrainConfig) -> None:
 
     # step 1. 加载tokenizer
@@ -61,7 +60,7 @@ def pre_train(config: TrainConfig) -> None:
                               vocab_size=len(tokenizer),
                               decoder_start_token_id=tokenizer.pad_token_id,
                               eos_token_id=tokenizer.eos_token_id)
-    
+
     # step 3. 初始化模型
     model = TextToTextModel(t5_config)
 
