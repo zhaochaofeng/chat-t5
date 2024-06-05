@@ -83,7 +83,7 @@ def pre_train(config: TrainConfig) -> None:
         evaluation_strategy='steps',
         learning_rate=config.learn_rate,
         per_device_train_batch_size=config.batch_size_per_gpu,
-        per_gpu_eval_batch_size=config.batch_size_per_gpu,
+        # per_gpu_eval_batch_size=config.batch_size_per_gpu,
         save_total_limit=config.keep_latest_n_ckp,
         save_steps=config.save_steps,
         num_train_epochs=config.epochs,
