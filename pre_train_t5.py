@@ -14,6 +14,10 @@ from utils.functions import get_T5_config, MyTrainerCallback
 from datasets import Dataset
 from datasets import load_dataset, load_metric
 
+# import os
+# os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '1.0'
+
+
 def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast, cache_dir: str='.cache') -> Dataset:
     dataset = load_dataset(path='parquet', data_files=file, split=split, cache_dir=cache_dir)
 
@@ -50,6 +54,7 @@ def pre_train(config: TrainConfig) -> None:
     def compute_bleu_metrics(eval_pred):
         predictions, labels = eval_pred
         decoded_preds = tokenizer.batch_decode(predictions, skip_special_tokens=True)
+        print('-' * 100)
         # 替换 -100 为 pad token id
         labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
         decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
@@ -81,7 +86,7 @@ def pre_train(config: TrainConfig) -> None:
         save_total_limit=5,
         save_steps=config.save_steps,
         num_train_epochs=config.epochs,
-        max_steps=100,
+        max_steps=10,
         bf16=True if config.mixed_precision == 'bf16' else False,
         fp16=True if config.mixed_precision == 'fp16' else False,
         bf16_full_eval=True if config.mixed_precision == 'bf16' else False,

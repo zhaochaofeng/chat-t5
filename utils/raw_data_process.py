@@ -103,18 +103,18 @@ def read_and_write_template(read_file: str, write_to_file: str, call_back: objec
     call_back：函数输入一个字符串，输出一个处理后的字典dict，如果输入的字符串为无效数据，请返回None
     group_cnt: parquet file分割行数
     如：
-    >>> def call_back(inputs: str) -> dict:
-    >>>     if check(inputs) not valid:
-    >>>         return None
-    ...    
-    ...    do something for inputs
-    ...
-    >>>     my_dict = {
-    >>>             'prompt': inputs['p'],
-    >>>             'response': inputs['a1'] + inputs['a2'],
-    >>>             ...
-    >>>         }
-    >>>     return my_dict
+    # >>> def call_back(inputs: str) -> dict:
+    # >>>     if check(inputs) not valid:
+    # >>>         return None
+    # ...
+    # ...    do something for inputs
+    # ...
+    # >>>     my_dict = {
+    # >>>             'prompt': inputs['p'],
+    # >>>             'response': inputs['a1'] + inputs['a2'],
+    # >>>             ...
+    # >>>         }
+    # >>>     return my_dict
     '''
 
     log.info('process file:{}'.format(read_file), save_to_file=True)
@@ -502,8 +502,8 @@ def process_belle_knowledge_enhanced_dataset(response_less_words: int=15, group_
     '''
     file_names = [
         '/data/raw_data/bell_open_source/train_2M_CN.json',
-        '/data/raw_data/bell_open_source/train_0.8M_CN.json',
-        '/data/raw_data/bell_open_source/Belle_open_source_1M.json',
+        '/data/raw_data/bell_open_source/train_3.5M_CN.json',
+        # '/data/raw_data/bell_open_source/Belle_open_source_1M.json',
     ]
 
     save_file = PROJECT_ROOT + '/data/my_data/my_belll_3M_cn.parquet'
@@ -827,7 +827,7 @@ def shuffle_parquet_dataset(parquet_file: str, shuffle_file: str, seed: int=2333
         raise Exception('can not find parquet file: {}'.format(parquet_file))
     
     print('start shuffle...')
-    pf =  pq.read_table(parquet_file)
+    pf = pq.read_table(parquet_file)
     df = pf.to_pandas()
     df = df.sample(frac=1.0, replace=False, random_state=seed, axis=0)
     
@@ -920,9 +920,9 @@ def split_train_valid_test_datasets(source_parquet_file: str, max_len: int=320, 
     '''
     assert train_ratio + test_ratio + valid_ratio == 1.0
 
-    train_parquet_file = PROJECT_ROOT + '/data/my_train_dataset.parquet'
-    test_parquet_file = PROJECT_ROOT + '/data/my_test_dataset.parquet'
-    valid_parquet_file = PROJECT_ROOT + '/data/my_valid_dataset.parquet'
+    train_parquet_file = PROJECT_ROOT + '/data/my_train_dataset2.parquet'
+    test_parquet_file = PROJECT_ROOT + '/data/my_test_dataset2.parquet'
+    valid_parquet_file = PROJECT_ROOT + '/data/my_valid_dataset2.parquet'
 
     if exists(train_parquet_file): assert delete_file(train_parquet_file)
     if exists(test_parquet_file): assert delete_file(test_parquet_file)
@@ -932,7 +932,7 @@ def split_train_valid_test_datasets(source_parquet_file: str, max_len: int=320, 
 
     train, test, valid = [], [], []
 
-    parquet_table =  pq.read_table(source_parquet_file)
+    parquet_table = pq.read_table(source_parquet_file)
 
     for prompt, response in progress.track(zip(parquet_table['prompt'], parquet_table['response']), total=parquet_table.num_rows):
         
@@ -1182,23 +1182,22 @@ if __name__ == '__main__':
 
     # merge
     # merge_dataset_as_single_file(groups_cnt=50000, min_len=3, max_len=512, cut_max_len=True)
-        
-    
-    remove_dataset_duplicate_rows(groups_cnt=50000)
 
-    # # shuffle
-    # shuffle_parquet_dataset(
-    #     parquet_file=PROJECT_ROOT + '/data/my_dataset.parquet', 
-    #     shuffle_file=PROJECT_ROOT + '/data/my_dataset.shuffle.parquet',  
-    #     seed=23333
-    # )
+    # remove_dataset_duplicate_rows(groups_cnt=50000)
+
+    # shuffle
+    shuffle_parquet_dataset(
+        parquet_file=PROJECT_ROOT + '/data/my_dataset.parquet',
+        shuffle_file=PROJECT_ROOT + '/data/my_dataset.shuffle.parquet',
+        seed=23333
+    )
 
     # split train validated and test
-    # split_train_valid_test_datasets(
-    #         source_parquet_file=PROJECT_ROOT + '/data/my_dataset.shuffle.parquet',
-    #         max_len=320, 
-    #         groups_cnt=50000
-    #     )
+    split_train_valid_test_datasets(
+            source_parquet_file=PROJECT_ROOT + '/data/my_dataset.shuffle.parquet',
+            max_len=320,
+            groups_cnt=50000
+        )
 
     # parquet_to_text()
 
@@ -1210,7 +1209,8 @@ if __name__ == '__main__':
 
     # count_my_parquet_data(PROJECT_ROOT + '/data/')
 
-    parquet_to_json()
+    # parquet_to_json()
     # count_my_json_data()
+
 
 

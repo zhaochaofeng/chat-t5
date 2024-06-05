@@ -112,8 +112,8 @@ class TrainConfig:
     train_state_dir: str = PROJECT_ROOT + '/model_save/train_latest_state'
     output_dir: str = PROJECT_ROOT + '/model_save/pretrain'
 
-    logging_steps: int = 10
-    save_steps: int = 10
+    logging_steps: int = 2
+    save_steps: int = 2
     
     # dataset_cache_dir: str = PROJECT_ROOT + '/data/.cache'
     # trainer_log_file: str = PROJECT_ROOT + '/logs/trainer.log'
@@ -128,16 +128,16 @@ class TrainConfig:
 # 以下为模型的配置
 @dataclass
 class T5ModelConfig:
-    '''
-    d_ff: int = 3072                        # 全连接层维度
 
-    d_model: int = 768                      # 词向量维度
-    num_heads: int = 12                     # 注意力头数 d_model // num_heads == d_kv
-    d_kv: int = 64                          # d_model // num_heads
+    # d_ff: int = 3072                        # 全连接层维度
+    #
+    # d_model: int = 768                      # 词向量维度
+    # num_heads: int = 12                     # 注意力头数 d_model // num_heads == d_kv
+    # d_kv: int = 64                          # d_model // num_heads
+    #
+    # num_decoder_layers: int = 10            # Transformer decoder 隐藏层层数
+    # num_layers: int = 10                    # Transformer encoder 隐藏层层数
 
-    num_decoder_layers: int = 10            # Transformer decoder 隐藏层层数
-    num_layers: int = 10                    # Transformer encoder 隐藏层层数
-    '''
 
     d_ff: int = 128
     d_model: int = 32
@@ -145,3 +145,6 @@ class T5ModelConfig:
     d_kv: int = 32
     num_decoder_layers: int = 1
     num_layers: int = 1
+
+
+
