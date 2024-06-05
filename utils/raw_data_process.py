@@ -1186,11 +1186,11 @@ if __name__ == '__main__':
     # remove_dataset_duplicate_rows(groups_cnt=50000)
 
     # shuffle
-    shuffle_parquet_dataset(
-        parquet_file=PROJECT_ROOT + '/data/my_dataset.parquet',
-        shuffle_file=PROJECT_ROOT + '/data/my_dataset.shuffle.parquet',
-        seed=23333
-    )
+    # shuffle_parquet_dataset(
+    #     parquet_file=PROJECT_ROOT + '/data/my_dataset.parquet',
+    #     shuffle_file=PROJECT_ROOT + '/data/my_dataset.shuffle.parquet',
+    #     seed=23333
+    # )
 
     # split train validated and test
     split_train_valid_test_datasets(

@@ -38,7 +38,7 @@ def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast, cache
             'labels': labels
         }
 
-    dataset = dataset.map(function=token_to_ids, batched=True, batch_size=100, remove_columns=dataset.column_names)
+    dataset = dataset.map(function=token_to_ids, batched=True, batch_size=2048, remove_columns=dataset.column_names)
     return dataset
 
 def pre_train(config: TrainConfig) -> None:
@@ -55,6 +55,7 @@ def pre_train(config: TrainConfig) -> None:
         predictions, labels = eval_pred
         decoded_preds = tokenizer.batch_decode(predictions, skip_special_tokens=True)
         print('-' * 100)
+        print(decoded_preds)
         # 替换 -100 为 pad token id
         labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
         decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
@@ -65,7 +66,7 @@ def pre_train(config: TrainConfig) -> None:
         return result
 
     dataset = get_dataset(file=config.train_file, split='train', tokenizer=tokenizer)
-    dataset_eval = get_dataset(file=config.validation_file, split='train', tokenizer=tokenizer)
+    dataset_eval = get_dataset(file=config.test_file, split='train', tokenizer=tokenizer)
     data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, max_length=config.max_seq_len)
 
     generation_config = GenerationConfig()
@@ -83,10 +84,10 @@ def pre_train(config: TrainConfig) -> None:
         learning_rate=config.learn_rate,
         per_device_train_batch_size=config.batch_size_per_gpu,
         per_gpu_eval_batch_size=config.batch_size_per_gpu,
-        save_total_limit=5,
+        save_total_limit=config.keep_latest_n_ckp,
         save_steps=config.save_steps,
         num_train_epochs=config.epochs,
-        max_steps=10,
+        # max_steps=10,
         bf16=True if config.mixed_precision == 'bf16' else False,
         fp16=True if config.mixed_precision == 'fp16' else False,
         bf16_full_eval=True if config.mixed_precision == 'bf16' else False,
@@ -109,8 +110,8 @@ def pre_train(config: TrainConfig) -> None:
 
     empty_cuda_cahce = MyTrainerCallback()
     early_stopping_callback = EarlyStoppingCallback(
-        early_stopping_patience=2,
-        early_stopping_threshold=0.1
+        early_stopping_patience=4,
+        early_stopping_threshold=0.05
     )
     trainer = Seq2SeqTrainer(
         model=model,
@@ -120,7 +121,9 @@ def pre_train(config: TrainConfig) -> None:
         eval_dataset=dataset_eval,
         tokenizer=tokenizer,
         compute_metrics=compute_bleu_metrics,
-        callbacks=[empty_cuda_cahce, early_stopping_callback],
+        callbacks=[empty_cuda_cahce,
+                   # early_stopping_callback
+                   ],
     )
 
     # 如果包含checkpoint则从断点处继续训练

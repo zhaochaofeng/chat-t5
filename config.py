@@ -45,7 +45,7 @@ class DpoConfig:
     per_device_train_batch_size: int = 4
     num_train_epochs: int = 4
     gradient_accumulation_steps: int = 8
-    learning_rate: float = 1e-5
+    learning_rate: float = 1e-4
     logging_first_step: bool = True
     logging_steps: int = 20                      
     save_steps: int = 2000
@@ -89,8 +89,8 @@ class TrainConfig:
     learn_rate: float = 0.0001                      # 最大 div_factor * learn_rate
     div_factor: int = 50
 
-    # mixed_precision: str = "bf16"                   # 混合精度 ''no','fp16','bf16' or 'fp8'
-    mixed_precision: str = 'no'
+    mixed_precision: str = "bf16"                   # 混合精度 ''no','fp16','bf16' or 'fp8'
+    # mixed_precision: str = 'no'
 
     # 注意：计算梯度时相当于batch_size * gradient_accumulation_steps，说人话就是梯度累积步数>1时，等于增大n倍的batch_size
     gradient_accumulation_steps: int = 8           # 累积梯度更新步数
@@ -100,9 +100,9 @@ class TrainConfig:
     tokenizer_dir: str = PROJECT_ROOT + '/model_save/'  # tokenizer一般和model权重放在同一个文件夹
     model_file: str = PROJECT_ROOT + '/model_save/chat_small_t5.{}.bin'
     model_config_file: str = PROJECT_ROOT + '/model_save/model_config.json'
-    train_file: str = PROJECT_ROOT + '/data/my_train_dataset.parquet'
-    validation_file: str = PROJECT_ROOT + '/data/my_valid_dataset.parquet'
-    test_file: str = PROJECT_ROOT + '/data/my_test_dataset.parquet'
+    train_file: str = PROJECT_ROOT + '/data/my_train_dataset2.parquet'
+    validation_file: str = PROJECT_ROOT + '/data/my_valid_dataset2.parquet'
+    test_file: str = PROJECT_ROOT + '/data/my_test_dataset2.parquet'
 
     # 从哪个模型开始微调，仅当traning 函数 is_finetune = True时生效
     # 微调记得冻结某些层或者调低学习率
@@ -112,13 +112,13 @@ class TrainConfig:
     train_state_dir: str = PROJECT_ROOT + '/model_save/train_latest_state'
     output_dir: str = PROJECT_ROOT + '/model_save/pretrain'
 
-    logging_steps: int = 2
-    save_steps: int = 2
+    logging_steps: int = 50
+    save_steps: int = 500
     
     # dataset_cache_dir: str = PROJECT_ROOT + '/data/.cache'
     # trainer_log_file: str = PROJECT_ROOT + '/logs/trainer.log'
 
-    keep_latest_n_ckp: int = 8                  # 训练过程中，最多保留多少个分数最好的模型文件
+    keep_latest_n_ckp: int = 5                  # 训练过程中，最多保留多少个分数最好的模型文件
 
     seed: int = 23333
     dataloader_buffer_size: int = 50000
@@ -129,22 +129,21 @@ class TrainConfig:
 @dataclass
 class T5ModelConfig:
 
-    # d_ff: int = 3072                        # 全连接层维度
-    #
-    # d_model: int = 768                      # 词向量维度
-    # num_heads: int = 12                     # 注意力头数 d_model // num_heads == d_kv
-    # d_kv: int = 64                          # d_model // num_heads
-    #
-    # num_decoder_layers: int = 10            # Transformer decoder 隐藏层层数
-    # num_layers: int = 10                    # Transformer encoder 隐藏层层数
+    d_ff: int = 3072                        # 全连接层维度
 
+    d_model: int = 768                      # 词向量维度
+    num_heads: int = 12                     # 注意力头数 d_model // num_heads == d_kv
+    d_kv: int = 64                          # d_model // num_heads
 
+    num_decoder_layers: int = 10            # Transformer decoder 隐藏层层数
+    num_layers: int = 10                    # Transformer encoder 隐藏层层数
+
+    ''''
     d_ff: int = 128
     d_model: int = 32
     num_heads: int = 1
     d_kv: int = 32
     num_decoder_layers: int = 1
     num_layers: int = 1
-
-
+    '''
 
