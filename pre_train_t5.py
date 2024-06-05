@@ -66,7 +66,7 @@ def pre_train(config: TrainConfig) -> None:
         return result
 
     dataset = get_dataset(file=config.train_file, split='train', tokenizer=tokenizer)
-    dataset_eval = get_dataset(file=config.test_file, split='train', tokenizer=tokenizer)
+    dataset_eval = get_dataset(file=config.validation_file, split='train', tokenizer=tokenizer)
     data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, max_length=config.max_seq_len)
 
     generation_config = GenerationConfig()
