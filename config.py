@@ -61,23 +61,23 @@ class DpoConfig:
 class SFTconfig:
     max_seq_len: int = 384 + 8                # 8 for eos token 
 
-    finetune_from_ckp_file = PROJECT_ROOT + '/model_save/'
+    # finetune_from_ckp_file = PROJECT_ROOT + '/model_save/'
+    finetune_from_ckp_file = PROJECT_ROOT + '/model_save/checkpoint-10'
 
     tokenizer_dir: str = PROJECT_ROOT + '/model_save/'  # tokenizer一般和model权重放在同一个文件夹
-    sft_train_file: str = PROJECT_ROOT + '/data/sft_train.json'
+    sft_train_file: str = PROJECT_ROOT + '/data/sft_train.parquet'
 
     batch_size: int = 12
-    num_train_epochs: int = 4
-    save_steps: int = 5000
+    num_train_epochs: int = 1
+    save_steps: int = 2000
     gradient_accumulation_steps: int = 4
-    learning_rate: float = 1e-5
+    learning_rate: float = 1e-4
     logging_first_step: bool = True
     logging_steps: int = 100                      
     output_dir: str = PROJECT_ROOT + '/model_save/sft'
     warmup_steps: int = 100
     fp16: bool = True
     seed: int = 23333
-
 
 # ===================================================================================
 # 以下为训练的配置
@@ -86,11 +86,11 @@ class TrainConfig:
     epochs: int = 1
     batch_size_per_gpu: int = 16
     
-    learn_rate: float = 0.0001                      # 最大 div_factor * learn_rate
+    learn_rate: float = 0.001                      # 最大 div_factor * learn_rate
     div_factor: int = 50
 
-    mixed_precision: str = "bf16"                   # 混合精度 ''no','fp16','bf16' or 'fp8'
-    # mixed_precision: str = 'no'
+    # mixed_precision: str = "bf16"                   # 混合精度 ''no','fp16','bf16' or 'fp8'
+    mixed_precision: str = 'no'
 
     # 注意：计算梯度时相当于batch_size * gradient_accumulation_steps，说人话就是梯度累积步数>1时，等于增大n倍的batch_size
     gradient_accumulation_steps: int = 8           # 累积梯度更新步数
@@ -100,9 +100,9 @@ class TrainConfig:
     tokenizer_dir: str = PROJECT_ROOT + '/model_save/'  # tokenizer一般和model权重放在同一个文件夹
     model_file: str = PROJECT_ROOT + '/model_save/chat_small_t5.{}.bin'
     model_config_file: str = PROJECT_ROOT + '/model_save/model_config.json'
-    train_file: str = PROJECT_ROOT + '/data/my_train_dataset2.parquet'
-    validation_file: str = PROJECT_ROOT + '/data/my_valid_dataset2.parquet'
-    test_file: str = PROJECT_ROOT + '/data/my_test_dataset2.parquet'
+    train_file: str = PROJECT_ROOT + '/data/my_train_dataset.parquet'
+    validation_file: str = PROJECT_ROOT + '/data/my_valid_dataset.parquet'
+    test_file: str = PROJECT_ROOT + '/data/my_test_dataset.parquet'
 
     # 从哪个模型开始微调，仅当traning 函数 is_finetune = True时生效
     # 微调记得冻结某些层或者调低学习率
@@ -113,12 +113,13 @@ class TrainConfig:
     output_dir: str = PROJECT_ROOT + '/model_save/pretrain'
 
     logging_steps: int = 50
-    save_steps: int = 500
+    save_steps: int = 2000
+    eval_steps: int = 2000
     
     # dataset_cache_dir: str = PROJECT_ROOT + '/data/.cache'
     # trainer_log_file: str = PROJECT_ROOT + '/logs/trainer.log'
 
-    keep_latest_n_ckp: int = 5                  # 训练过程中，最多保留多少个分数最好的模型文件
+    keep_latest_n_ckp: int = 3                  # 训练过程中，最多保留多少个分数最好的模型文件
 
     seed: int = 23333
     dataloader_buffer_size: int = 50000
@@ -128,7 +129,7 @@ class TrainConfig:
 # 以下为模型的配置
 @dataclass
 class T5ModelConfig:
-
+    '''
     d_ff: int = 3072                        # 全连接层维度
 
     d_model: int = 768                      # 词向量维度
@@ -138,12 +139,12 @@ class T5ModelConfig:
     num_decoder_layers: int = 10            # Transformer decoder 隐藏层层数
     num_layers: int = 10                    # Transformer encoder 隐藏层层数
 
-    ''''
+    '''
     d_ff: int = 128
     d_model: int = 32
     num_heads: int = 1
     d_kv: int = 32
     num_decoder_layers: int = 1
     num_layers: int = 1
-    '''
+
 

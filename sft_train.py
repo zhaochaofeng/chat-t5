@@ -24,7 +24,7 @@ def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast, cache
     """
 
     # 加载json数据集，如果要加载parquet，更改为'parquet'即可
-    dataset = load_dataset('json', data_files=file,  split=split, cache_dir=cache_dir)
+    dataset = load_dataset('parquet', data_files=file,  split=split, cache_dir=cache_dir)
 
     def tokens_to_ids(samples: dict) -> Dict[str, str]:
 
@@ -63,7 +63,13 @@ def sft_train(config: SFTconfig) -> None:
         # load_state_dict
         t5_config = get_T5_config(T5ModelConfig(), vocab_size=len(tokenizer), decoder_start_token_id=tokenizer.pad_token_id, eos_token_id=tokenizer.eos_token_id)
         model = TextToTextModel(t5_config)
-        model.load_state_dict(torch.load(config.finetune_from_ckp_file, map_location='cpu')) # set cpu for no exception
+        model.load_state_dict(torch.load(config.finetune_from_ckp_file, map_location='cpu'))  # set cpu for no exception
+
+    # 冻结参数
+    layer_to_freeze = [model.shared, model.encoder]
+    for layer in layer_to_freeze:
+        for p in layer.parameters():
+            p.requires_grad = False
 
     # Step 4: Load the dataset
     dataset = get_dataset(file=config.sft_train_file, split="train", tokenizer=tokenizer)

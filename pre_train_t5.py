@@ -3,7 +3,7 @@ import time
 import numpy as np
 import pandas as pd
 from typing import Dict
-from config import TrainConfig, T5ModelConfig
+from config import TrainConfig, T5ModelConfig, SFTconfig
 from transformers import PreTrainedTokenizerFast
 from transformers import DataCollatorForSeq2Seq
 from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer
@@ -14,12 +14,8 @@ from utils.functions import get_T5_config, MyTrainerCallback
 from datasets import Dataset
 from datasets import load_dataset, load_metric
 
-# import os
-# os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '1.0'
-
-
-def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast, cache_dir: str='.cache') -> Dataset:
-    dataset = load_dataset(path='parquet', data_files=file, split=split, cache_dir=cache_dir)
+def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast) -> Dataset:
+    dataset = load_dataset(path='parquet', data_files=file, split=split)
 
     def token_to_ids(example: dict) -> Dict[str, list]:
         batch_prompt = example['prompt']
@@ -37,19 +33,31 @@ def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast, cache
             'input_ids': input_ids,
             'labels': labels
         }
-
     dataset = dataset.map(function=token_to_ids, batched=True, batch_size=2048, remove_columns=dataset.column_names)
     return dataset
 
-def pre_train(config: TrainConfig) -> None:
+def train(config: TrainConfig, is_keeptrain: bool=False, is_finetune: bool=False, ) -> None:
     tokenizer = PreTrainedTokenizerFast.from_pretrained(config.tokenizer_dir)
-    config_t5 = get_T5_config(T5ModelConfig(),
-                              vocab_size=len(tokenizer),
-                              decoder_start_token_id=tokenizer.pad_token_id,
-                              eos_token_id=tokenizer.eos_token_id)
-    model = TextToTextModel(config_t5)
+    if is_finetune:
+        model = TextToTextModel.from_pretrained(SFTconfig().finetune_from_ckp_file)
+    else:
+        config_t5 = get_T5_config(T5ModelConfig(),
+                                  vocab_size=len(tokenizer),
+                                  decoder_start_token_id=tokenizer.pad_token_id,
+                                  eos_token_id=tokenizer.eos_token_id)
+        model = TextToTextModel(config_t5)
+    print(model)
 
-    # 加载 BLEU 评估指标
+    if is_finetune:
+        print('-' * 100)
+        print('fine tuning ...')
+        layer_to_freeze = [model.shared, model.encoder]
+        for layer in layer_to_freeze:
+            for p in layer.parameters():
+                p.requires_grad = False
+    print('-' * 100)
+    print(sum([p.numel() for p in model.parameters() if p.requires_grad==True]))
+    # 加载 BLEU 评估指标。解码过程非常耗时
     bleu_metric = load_metric("sacrebleu")
     def compute_bleu_metrics(eval_pred):
         predictions, labels = eval_pred
@@ -65,7 +73,10 @@ def pre_train(config: TrainConfig) -> None:
         result = {"bleu": result["score"]}
         return result
 
-    dataset = get_dataset(file=config.train_file, split='train', tokenizer=tokenizer)
+    if is_finetune:
+        dataset = get_dataset(file=SFTconfig().sft_train_file, split='train', tokenizer=tokenizer)
+    else:
+        dataset = get_dataset(file=config.train_file, split='train', tokenizer=tokenizer)
     dataset_eval = get_dataset(file=config.validation_file, split='train', tokenizer=tokenizer)
     data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, max_length=config.max_seq_len)
 
@@ -80,10 +91,12 @@ def pre_train(config: TrainConfig) -> None:
 
     args = Seq2SeqTrainingArguments(
         output_dir=config.output_dir,
-        evaluation_strategy='steps',
+        evaluation_strategy='epoch',
+        # eval_steps=config.eval_steps,
         learning_rate=config.learn_rate,
         per_device_train_batch_size=config.batch_size_per_gpu,
         # per_gpu_eval_batch_size=config.batch_size_per_gpu,
+        gradient_accumulation_steps=config.gradient_accumulation_steps,
         save_total_limit=config.keep_latest_n_ckp,
         save_steps=config.save_steps,
         num_train_epochs=config.epochs,
@@ -102,10 +115,11 @@ def pre_train(config: TrainConfig) -> None:
         generation_config=generation_config,
         seed=config.seed,
         optim='adafactor',
-        load_best_model_at_end=True,
-        metric_for_best_model='bleu',
-        greater_is_better=True,
+        # load_best_model_at_end=True,
+        # metric_for_best_model='bleu',
+        # greater_is_better=True,
         predict_with_generate=True,
+
     )
 
     empty_cuda_cahce = MyTrainerCallback()
@@ -126,13 +140,11 @@ def pre_train(config: TrainConfig) -> None:
                    ],
     )
 
-    # 如果包含checkpoint则从断点处继续训练
-    has_checkpoint_file = 'checkpoint' in ''.join(os.listdir(config.output_dir))
-    if has_checkpoint_file:
+    if is_keeptrain:
         print('-' * 100)
-        print('keep training')
+        print('keep training ...')
     trainer.train(
-        resume_from_checkpoint=has_checkpoint_file
+        resume_from_checkpoint=is_keeptrain
     )
 
     loss_log = pd.DataFrame(trainer.state.log_history)
@@ -144,4 +156,4 @@ def pre_train(config: TrainConfig) -> None:
 
 if __name__ == '__main__':
     config = TrainConfig()
-    pre_train(config)
+    train(config, is_keeptrain=False, is_finetune=True)
