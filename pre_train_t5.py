@@ -1,9 +1,9 @@
 import os
 import time
+import argparse
 import numpy as np
 import pandas as pd
 from typing import Dict
-from config import TrainConfig, T5ModelConfig, SFTconfig
 from transformers import PreTrainedTokenizerFast
 from transformers import DataCollatorForSeq2Seq
 from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer
@@ -36,27 +36,14 @@ def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast) -> Da
     dataset = dataset.map(function=token_to_ids, batched=True, batch_size=2048, remove_columns=dataset.column_names)
     return dataset
 
-def train(config: TrainConfig, is_keeptrain: bool=False, is_finetune: bool=False, ) -> None:
+def pre_train(config, is_keeptrain: bool=False, ) -> None:
     tokenizer = PreTrainedTokenizerFast.from_pretrained(config.tokenizer_dir)
-    if is_finetune:
-        model = TextToTextModel.from_pretrained(SFTconfig().finetune_from_ckp_file)
-    else:
-        config_t5 = get_T5_config(T5ModelConfig(),
-                                  vocab_size=len(tokenizer),
-                                  decoder_start_token_id=tokenizer.pad_token_id,
-                                  eos_token_id=tokenizer.eos_token_id)
-        model = TextToTextModel(config_t5)
-    print(model)
+    config_t5 = get_T5_config(T5ModelConfig(),
+                              vocab_size=len(tokenizer),
+                              decoder_start_token_id=tokenizer.pad_token_id,
+                              eos_token_id=tokenizer.eos_token_id)
+    model = TextToTextModel(config_t5)
 
-    if is_finetune:
-        print('-' * 100)
-        print('fine tuning ...')
-        layer_to_freeze = [model.shared, model.encoder]
-        for layer in layer_to_freeze:
-            for p in layer.parameters():
-                p.requires_grad = False
-    print('-' * 100)
-    print(sum([p.numel() for p in model.parameters() if p.requires_grad==True]))
     # 加载 BLEU 评估指标。解码过程非常耗时
     bleu_metric = load_metric("sacrebleu")
     def compute_bleu_metrics(eval_pred):
@@ -73,11 +60,8 @@ def train(config: TrainConfig, is_keeptrain: bool=False, is_finetune: bool=False
         result = {"bleu": result["score"]}
         return result
 
-    if is_finetune:
-        dataset = get_dataset(file=SFTconfig().sft_train_file, split='train', tokenizer=tokenizer)
-    else:
-        dataset = get_dataset(file=config.train_file, split='train', tokenizer=tokenizer)
-    dataset_eval = get_dataset(file=config.validation_file, split='train', tokenizer=tokenizer)
+    train_dataset = get_dataset(file=config.train_file, split='train', tokenizer=tokenizer)
+    eval_data = get_dataset(file=config.validation_file, split='train', tokenizer=tokenizer)
     data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, max_length=config.max_seq_len)
 
     generation_config = GenerationConfig()
@@ -86,40 +70,35 @@ def train(config: TrainConfig, is_keeptrain: bool=False, is_finetune: bool=False
     generation_config.decoder_start_token_id = tokenizer.pad_token_id
     generation_config.pad_token_id = tokenizer.pad_token_id
     generation_config.max_new_tokens = 320
+    generation_config.repetition_penalty = 1.2
     generation_config.num_beams = 1
     generation_config.do_sample = False
 
     args = Seq2SeqTrainingArguments(
         output_dir=config.output_dir,
         evaluation_strategy='epoch',
-        # eval_steps=config.eval_steps,
-        learning_rate=config.learn_rate,
         per_device_train_batch_size=config.batch_size_per_gpu,
-        # per_gpu_eval_batch_size=config.batch_size_per_gpu,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
-        save_total_limit=config.keep_latest_n_ckp,
-        save_steps=config.save_steps,
-        num_train_epochs=config.epochs,
-        # max_steps=10,
-        bf16=True if config.mixed_precision == 'bf16' else False,
-        fp16=True if config.mixed_precision == 'fp16' else False,
-        bf16_full_eval=True if config.mixed_precision == 'bf16' else False,
-        fp16_full_eval=True if config.mixed_precision == 'fp16' else False,
-        auto_find_batch_size=True,
-        remove_unused_columns=True,
-        logging_first_step=True,
-        logging_steps=config.logging_steps,
-        log_level='info',
+        learning_rate=config.learning_rate,
+        num_train_epochs=config.num_train_epochs,
         warmup_steps=config.warmup_steps,
-        report_to=['tensorboard'],
-        generation_config=generation_config,
+        log_level='info',
+        logging_steps=config.logging_steps,
+        save_strategy='steps',
+        save_steps=config.save_steps,
+        save_total_limit=config.save_total_limit,
         seed=config.seed,
+        bf16=config.bf16,
+        bf16_full_eval=config.bf16,
+        remove_unused_columns=True,
         optim='adafactor',
+        report_to=['tensorboard'],
+        auto_find_batch_size=True,
+        predict_with_generate=True,
+        generation_config=generation_config,
         # load_best_model_at_end=True,
         # metric_for_best_model='bleu',
         # greater_is_better=True,
-        predict_with_generate=True,
-
     )
 
     empty_cuda_cahce = MyTrainerCallback()
@@ -131,8 +110,8 @@ def train(config: TrainConfig, is_keeptrain: bool=False, is_finetune: bool=False
         model=model,
         args=args,
         data_collator=data_collator,
-        train_dataset=dataset,
-        eval_dataset=dataset_eval,
+        train_dataset=train_dataset,
+        eval_dataset=eval_data,
         tokenizer=tokenizer,
         compute_metrics=compute_bleu_metrics,
         callbacks=[empty_cuda_cahce,
@@ -141,8 +120,7 @@ def train(config: TrainConfig, is_keeptrain: bool=False, is_finetune: bool=False
     )
 
     if is_keeptrain:
-        print('-' * 100)
-        print('keep training ...')
+        print('{}\n{}'.format('-' * 100, 'keep training ...'))
     trainer.train(
         resume_from_checkpoint=is_keeptrain
     )
@@ -151,9 +129,18 @@ def train(config: TrainConfig, is_keeptrain: bool=False, is_finetune: bool=False
     log_dir = './logs'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
-    loss_log.to_csv(path_or_buf=f"{log_dir}/pre_train_log_{time.strftime('%Y%m%d-%H%M%S')}.csv", index_label='index')
+    loss_log.to_csv(path_or_buf=f"{log_dir}/pre_train_log_{time.strftime('%Y%m%d')}.csv", index_label='index')
     trainer.save_model(output_dir=config.output_dir)
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='pre_train_t5')
+    parser.add_argument('--is_keeptrain', action='store_true', help='是否从中断处恢复训练')
+    parser.add_argument('--is_online', action='store_true',  help='是否线上训练')
+    args = parser.parse_args()
+
+    if args.is_online:
+        from config import TrainConfig, T5ModelConfig
+    else:
+        from config_test import TrainConfig, T5ModelConfig
     config = TrainConfig()
-    train(config, is_keeptrain=False, is_finetune=True)
+    pre_train(config, args.is_keeptrain)

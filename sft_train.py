@@ -55,7 +55,6 @@ def sft_train(config: SFTconfig) -> None:
     tokenizer = PreTrainedTokenizerFast.from_pretrained(config.tokenizer_dir)
     
     # step 2. 加载预训练模型
-    model = None
     if os.path.isdir(config.finetune_from_ckp_file):
         # 传入文件夹则 from_pretrained
         model = TextToTextModel.from_pretrained(config.finetune_from_ckp_file)
