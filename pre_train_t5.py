@@ -1,6 +1,8 @@
 import os
 import time
 import argparse
+
+import evaluate
 import numpy as np
 import pandas as pd
 from typing import Dict
@@ -12,7 +14,8 @@ from transformers import EarlyStoppingCallback
 from model.chat_model import TextToTextModel
 from utils.functions import get_T5_config, MyTrainerCallback
 from datasets import Dataset
-from datasets import load_dataset, load_metric
+from datasets import load_dataset
+import evaluate
 
 def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast) -> Dataset:
     dataset = load_dataset(path='parquet', data_files=file, split=split)
@@ -45,12 +48,10 @@ def pre_train(config, is_keeptrain: bool=False, ) -> None:
     model = TextToTextModel(config_t5)
 
     # 加载 BLEU 评估指标。解码过程非常耗时
-    bleu_metric = load_metric("sacrebleu")
+    bleu_metric = evaluate.load('bleu')
     def compute_bleu_metrics(eval_pred):
         predictions, labels = eval_pred
         decoded_preds = tokenizer.batch_decode(predictions, skip_special_tokens=True)
-        print('-' * 100)
-        print(decoded_preds)
         # 替换 -100 为 pad token id
         labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
         decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
