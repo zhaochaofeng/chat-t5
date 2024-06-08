@@ -57,7 +57,7 @@ def pre_train(config, is_keeptrain: bool=False, ) -> None:
 
         # 计算 BLEU 分数
         result = bleu_metric.compute(predictions=decoded_preds, references=[[label] for label in decoded_labels])
-        result = {"bleu": result["score"]}
+        result = {"bleu": result["bleu"]}
         return result
 
     train_dataset = get_dataset(file=config.train_file, split='train', tokenizer=tokenizer)

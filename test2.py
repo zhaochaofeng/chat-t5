@@ -43,7 +43,4 @@ panel = Panel(Text('Hello', justify='right'))
 print(panel)
 '''
 
-import torch
-
-model = torch.nn.Transformer()
 

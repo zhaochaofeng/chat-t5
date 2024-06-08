@@ -9,7 +9,10 @@ from transformers import PreTrainedTokenizerFast
 from transformers import DataCollatorForSeq2Seq
 from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer
 from transformers import GenerationConfig
+from transformers import EarlyStoppingCallback
 from model.chat_model import TextToTextModel
+import evaluate
+from utils.functions import MyTrainerCallback
 
 def get_dataset(tokenizer: PreTrainedTokenizerFast, file:str, split: str, )-> Dataset:
     dataset = load_dataset(path='parquet', data_files=file, split=split)
@@ -31,6 +34,20 @@ def sft_train(config, is_keeptrain: bool=False) -> None:
     tokenizer = PreTrainedTokenizerFast.from_pretrained(config.tokenizer_dir)
     model = TextToTextModel.from_pretrained(config.finetune_from_ckp_file)
 
+    # 加载 BLEU 评估指标。解码过程非常耗时
+    bleu_metric = evaluate.load('bleu')
+
+    def compute_bleu_metrics(eval_pred):
+        predictions, labels = eval_pred
+        decoded_preds = tokenizer.batch_decode(predictions, skip_special_tokens=True)
+        # 替换 -100 为 pad token id
+        labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
+        decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
+
+        # 计算 BLEU 分数
+        result = bleu_metric.compute(predictions=decoded_preds, references=[[label] for label in decoded_labels])
+        result = {"bleu": result["bleu"]}
+        return result
     # 冻结参数
     for layer in [model.shared, model.encoder]:
         for p in layer.parameters():
@@ -74,6 +91,12 @@ def sft_train(config, is_keeptrain: bool=False) -> None:
         generation_config=generation_config,
     )
 
+    empty_cuda_cahce = MyTrainerCallback()
+    early_stopping_callback = EarlyStoppingCallback(
+        early_stopping_patience=4,
+        early_stopping_threshold=0.05
+    )
+
     trainer = Seq2SeqTrainer(
         model=model,
         args=training_args,
@@ -81,8 +104,8 @@ def sft_train(config, is_keeptrain: bool=False) -> None:
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         tokenizer=tokenizer,
-        compute_metrics='',
-        callbacks=[],
+        compute_metrics=compute_bleu_metrics,
+        callbacks=[empty_cuda_cahce, ],
     )
 
     if is_keeptrain:
