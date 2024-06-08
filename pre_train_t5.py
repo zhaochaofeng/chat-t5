@@ -1,8 +1,6 @@
 import os
 import time
 import argparse
-
-import evaluate
 import numpy as np
 import pandas as pd
 from typing import Dict
@@ -40,6 +38,7 @@ def get_dataset(file: str, split: str, tokenizer: PreTrainedTokenizerFast) -> Da
     return dataset
 
 def pre_train(config, is_keeptrain: bool=False, ) -> None:
+
     tokenizer = PreTrainedTokenizerFast.from_pretrained(config.tokenizer_dir)
     config_t5 = get_T5_config(T5ModelConfig(),
                               vocab_size=len(tokenizer),
@@ -62,7 +61,7 @@ def pre_train(config, is_keeptrain: bool=False, ) -> None:
         return result
 
     train_dataset = get_dataset(file=config.train_file, split='train', tokenizer=tokenizer)
-    eval_data = get_dataset(file=config.validation_file, split='train', tokenizer=tokenizer)
+    eval_dataset = get_dataset(file=config.validation_file, split='train', tokenizer=tokenizer)
     data_collator = DataCollatorForSeq2Seq(tokenizer=tokenizer, max_length=config.max_seq_len)
 
     generation_config = GenerationConfig()
@@ -107,12 +106,13 @@ def pre_train(config, is_keeptrain: bool=False, ) -> None:
         early_stopping_patience=4,
         early_stopping_threshold=0.05
     )
+
     trainer = Seq2SeqTrainer(
         model=model,
         args=args,
         data_collator=data_collator,
         train_dataset=train_dataset,
-        eval_dataset=eval_data,
+        eval_dataset=eval_dataset,
         tokenizer=tokenizer,
         compute_metrics=compute_bleu_metrics,
         callbacks=[empty_cuda_cahce,

@@ -18,8 +18,8 @@ class TrainConfig:
     bf16: bool = False
     gradient_accumulation_steps: int = 8
     warmup_steps: int = 1024
-    logging_steps: int = 2
-    save_steps: int = 2
+    logging_steps: int = 5
+    save_steps: int = 5
     save_total_limit: int = 2
     seed: int = 23333
     max_seq_len: int = 256
